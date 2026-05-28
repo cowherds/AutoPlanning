@@ -63,6 +63,10 @@ GOAL_ARRIVE_VEL_TOL = 0.25
 GOAL_ARRIVE_HOLD_FRAMES = 10
 PATH_PROGRESS_RESET_DIST = 4.0
 EMER_BACKOFF_SEC = 0.8
+STUCK_PROGRESS_TIMEOUT_SEC = 6.0
+STUCK_PROGRESS_EPS_M = 0.6
+STUCK_RECOVERY_COOLDOWN_SEC = 3.0
+SAFE_TARGET_HOLD_FRAMES = 12
 
 
 @dataclass
@@ -128,6 +132,11 @@ class SuperCompatPlanner(Node):
         self._last_plan_ret = PlanRetCode.NO_NEED
         self._last_plan_mode = "idle"
         self._emer_backoff_until = 0.0
+        self._best_goal_dist = float("inf")
+        self._last_progress_time = 0.0
+        self._stuck_recover_until = 0.0
+        self._active_safe_target: Optional[Tuple[float, float]] = None
+        self._safe_target_hold_count = 0
 
         odom_topic = str(self.get_parameter("odom_topic").value)
         lidar_topic = str(self.get_parameter("lidar_topic").value)
@@ -277,6 +286,11 @@ class SuperCompatPlanner(Node):
         self._unsafe_hold_count = 0
         self._goal_arrive_count = 0
         self._goal_reached_latched = False
+        self._best_goal_dist = float("inf")
+        self._last_progress_time = self.get_clock().now().nanoseconds * 1e-9
+        self._stuck_recover_until = 0.0
+        self._active_safe_target = None
+        self._safe_target_hold_count = 0
         self._reset_tracking_state()
         if self.odom is not None:
             sx, sy, _ = self._odom_pos()
@@ -517,6 +531,7 @@ class SuperCompatPlanner(Node):
 
         gx, gy = self.goal[0], self.goal[1]
         dis_to_goal = math.hypot(gx - x, gy - y)
+        self._maybe_trigger_stuck_recovery(dis_to_goal)
 
         # Final approach: force exact goal tracking (instead of lookahead waypoints).
         if dis_to_goal < GOAL_APPROACH_RADIUS:
@@ -599,8 +614,17 @@ class SuperCompatPlanner(Node):
         min_idx: int,
     ) -> Optional[Tuple[float, float]]:
         blocked = self.core._blocked_set(start_xy)
+        if (
+            self._active_safe_target is not None
+            and self._safe_target_hold_count < SAFE_TARGET_HOLD_FRAMES
+            and self.core.map.segment_is_free(start_xy, self._active_safe_target, blocked)
+        ):
+            self._safe_target_hold_count += 1
+            return self._active_safe_target
         if self.core.map.segment_is_free(start_xy, target_xy, blocked):
             self._last_safe_target = target_xy
+            self._active_safe_target = target_xy
+            self._safe_target_hold_count = 0
             return target_xy
 
         if self.current_path:
@@ -646,13 +670,19 @@ class SuperCompatPlanner(Node):
 
             if best is not None:
                 self._last_safe_target = best
+                self._active_safe_target = best
+                self._safe_target_hold_count = 0
                 return best
             if fallback is not None:
                 self._last_safe_target = fallback
+                self._active_safe_target = fallback
+                self._safe_target_hold_count = 0
                 return fallback
         if self._last_safe_target is not None and self.core.map.segment_is_free(
             start_xy, self._last_safe_target, blocked
         ):
+            self._active_safe_target = self._last_safe_target
+            self._safe_target_hold_count = 0
             return self._last_safe_target
         return None
 
@@ -740,6 +770,36 @@ class SuperCompatPlanner(Node):
             return gx, gy
         step = min(max(self.core.cfg.map.resolution, 0.4), dist)
         return x + dx / dist * step, y + dy / dist * step
+
+    def _maybe_trigger_stuck_recovery(self, dis_to_goal: float) -> None:
+        now_t = self.get_clock().now().nanoseconds * 1e-9
+        if self._last_progress_time <= 0.0:
+            self._last_progress_time = now_t
+            self._best_goal_dist = dis_to_goal
+            return
+        if dis_to_goal + STUCK_PROGRESS_EPS_M < self._best_goal_dist:
+            self._best_goal_dist = dis_to_goal
+            self._last_progress_time = now_t
+            return
+        if now_t < self._stuck_recover_until:
+            return
+        if now_t - self._last_progress_time < STUCK_PROGRESS_TIMEOUT_SEC:
+            return
+        if dis_to_goal < max(self.cfg.goal_tolerance * 2.0, 2.0):
+            return
+        self.get_logger().warn(
+            "Detected stuck around obstacle: force reset and plan-from-rest recovery."
+        )
+        self.core.reset_path_on_new_goal()
+        self._new_goal_flag = True
+        self.fsm.on_new_goal()
+        self._path_progress_idx = 0
+        self._last_safe_target = None
+        self._active_safe_target = None
+        self._safe_target_hold_count = 0
+        self._stuck_recover_until = now_t + STUCK_RECOVERY_COOLDOWN_SEC
+        self._last_progress_time = now_t
+        self._best_goal_dist = dis_to_goal
 
     def _distance_to_current_path(self, pos_xy: Tuple[float, float]) -> float:
         if not self.current_path:
