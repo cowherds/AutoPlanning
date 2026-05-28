@@ -1,0 +1,63 @@
+# ROS2 LiDAR-only sensor simulator configuration
+odom_topic: "/sim/odom"
+lidar_topic: "/lidar_points"
+lidar_world_topic: "/lidar_points_world"
+
+lidar_fps: 10
+
+# Map / environment
+random_map: true
+resolution: 0.1
+
+ply_file: "src/pointcloud/forest.ply"
+expand_x_times: 0
+expand_y_times: 0
+occupy_threshold: 0
+
+seed: 3
+x_length: 60
+y_length: 60
+z_length: 15
+maze_type: 5
+complexity: 0.02
+fill: 0.1
+fractal: 1
+attenuation: 0.1
+width_min: 0.6
+width_max: 1.5
+obstacle_number: 100
+road_width: 3
+add_wall_x: 1
+add_wall_y: 1
+tree_file: "envs/pointcloud/tree.ply"
+tree_dist: 4
+room_number: 4
+max_windows: 2
+window_size_min: 2.0
+window_size_max: 2.8
+add_ceiling: 0
+wall_width_min: 0.5
+wall_width_max: 6.0
+wall_thick: 0.5
+wall_number: 100
+wall_ceiling: 1
+
+lidar:
+  vertical_lines: 64
+  vertical_angle_start: -38.7
+  vertical_angle_end: 38.7
+  horizontal_num: 360
+  horizontal_resolution: 1.0
+  max_lidar_dist: 20.0
+
+# Dataset generation (dataset_generator node)
+save_path: "../dataset/"
+env_num: 10
+image_num: 10000
+roll_range: 30
+pitch_range: 30
+x_range: 40
+y_range: 40
+z_range: [0.5, 4]
+safe_dist: 0.5
+ply_res: 0.1

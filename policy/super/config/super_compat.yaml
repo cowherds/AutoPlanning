@@ -1,0 +1,27 @@
+/super_compat_planner:
+  ros__parameters:
+    odom_topic: "/sim/odom"
+    lidar_topic: "/lidar_points"
+    ctrl_topic: "/so3_control/pos_cmd"
+    goal_topic: "/move_base_simple/goal"
+    path_topic: "/super_compat/planned_path"
+    expected_goal_frame: "world"
+    mission_file: ""
+    map_resolution: 0.35
+    planning_horizon: 16.0
+    obstacle_inflation: 0.7
+    map_decay_sec: 2.0
+    start_clearance: 1.0
+    flight_height: 3.0
+    max_speed: 10.0
+    lookahead_distance: 2.2
+    planning_rate_hz: 8.0
+    control_rate_hz: 50.0
+    goal_tolerance: 0.8
+    world_frame_cloud: false
+    use_default_goal: false
+    default_goal: [10.0, 0.0]
+    target_smooth_tau: 0.45
+    acc_smooth_tau: 0.20
+    yaw_smooth_tau: 0.35
+    mission_switch_dis: 3.0

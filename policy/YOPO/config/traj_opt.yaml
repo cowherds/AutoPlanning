@@ -1,0 +1,67 @@
+# IMPORTANT: velocity in testing (modifiable)
+velocity: 10.0
+
+# IMPORTANT: vel_max and acc_max in training
+vel_max_train: 10.0
+acc_max_train: 6.0
+
+# IMPORTANT: weight of costs for unit speed (can be visualized in tensorboard)
+wg: 0.15
+ws: 10.0
+wa: 1.0
+wc: 1.0
+
+dataset_path: "../dataset"
+
+# LiDAR → point-cloud tokens (simulator dataset_generator and runtime preprocessing must match)
+lidar_vertical_lines: 64
+lidar_horizontal_num: 360
+lidar_vertical_fov: 77.4
+lidar_sensing_horizon: 20.0
+lidar_sensing_blind: 0.1
+range_image_height: 96
+range_image_width: 640
+range_image_channels: 5
+pointcloud_num_points: 4096
+pointcloud_feature_dim: 4
+
+# trajectory and primitive param
+horizon_num: 5
+vertical_num: 3
+horizon_camera_fov: 90.0
+vertical_camera_fov: 60.0
+horizon_anchor_fov: 30.0
+vertical_anchor_fov: 30.0
+radio_range: 5.0
+radio_num: 1
+
+# 360-degree lattice (PTv3-style backbone + lattice primitive)
+lidar_lattice_segments: 4
+lidar_horizon_fov: 360.0
+lidar_lattice_vertical_fov: 60.0
+lidar_horizon_anchor_fov: 30.0
+lidar_vertical_anchor_fov: 30.0
+lidar_horizon_num_per_segment: 5
+lidar_vertical_num: 3
+
+# safety penalties
+d0: 1.2
+r: 0.6
+
+vx_mean_unit: 0.4
+vy_mean_unit: 0.0
+vz_mean_unit: 0.0
+vx_std_unit: 2.0
+vy_std_unit: 0.45
+vz_std_unit: 0.3
+ax_mean_unit: 0.0
+ay_mean_unit: 0.0
+az_mean_unit: 0.0
+ax_std_unit: 0.5
+ay_std_unit: 0.5
+az_std_unit: 0.3
+goal_pitch_std: 10.0
+goal_yaw_std: 20.0
+
+map_expand_min: [0, 0, 0.5]
+map_expand_max: [0, 0, 4.0]
